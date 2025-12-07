@@ -51,10 +51,31 @@ app.post('/api/data', async (req, res) => {
 });
 
 // Endpoint GET untuk mengambil semua data sensor
+// Endpoint GET dengan Filter Tanggal
 app.get('/sensor-data', async (req, res) => {
   try {
-    const allData = await SensorData.find().sort({ timestamp: -1 });
+    const { startDate, endDate } = req.query;
+    let query = {};
+
+    // Jika ada parameter tanggal dari Frontend, kita filter query-nya
+    if (startDate && endDate) {
+      // Set waktu dari awal hari (00:00) sampai akhir hari (23:59)
+      const start = new Date(startDate);
+      start.setHours(0, 0, 0, 0);
+
+      const end = new Date(endDate);
+      end.setHours(23, 59, 59, 999);
+
+      query.timestamp = {
+        $gte: start, // Greater Than or Equal (>=)
+        $lte: end    // Less Than or Equal (<=)
+      };
+    }
+
+    // Ambil data sesuai query, urutkan dari yang terbaru
+    const allData = await SensorData.find(query).sort({ timestamp: -1 });
     res.json(allData);
+
   } catch (err) {
     res.status(500).json({ message: '❌ Gagal mengambil data', error: err.message });
   }
