@@ -5,7 +5,7 @@ const SensorData = require('./models/sensor-data');
 const path = require('path');
 
 const app = express();
-const PORT = process.env.PORT || 3000;
+const PORT = process.env.PORT || 3010;
 
 // Middleware untuk parsing JSON
 app.use(express.json());
@@ -13,7 +13,7 @@ app.use(express.urlencoded({ extended: true }));
 app.use(cors());
 
 // Koneksi ke MongoDB
-mongoose.connect('mongodb://localhost:20000/db_irrigation').then(() => {
+mongoose.connect('mongodb://127.0.0.1:27017/db_irrigation').then(() => {
   console.log('✅ Terhubung ke MongoDB');
 }).catch(err => {
   console.error('❌ Gagal terhubung ke MongoDB:', err);
