@@ -2,15 +2,20 @@ const express = require('express');
 const mongoose = require('mongoose');
 const cors = require('cors');
 const SensorData = require('./models/sensor-data');
-const path = require('path');
+const path = require('path'); // Pastikan ini ada
 
 const app = express();
 const PORT = process.env.PORT || 3010;
 
-// Middleware untuk parsing JSON
+// Middleware
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(cors());
+
+// --- [BARU 1] Konfigurasi Folder Statis (Frontend) ---
+// Memberitahu Express bahwa file website ada di folder 'dist'
+app.use(express.static(path.join(__dirname, 'dist')));
+
 
 // Koneksi ke MongoDB
 mongoose.connect('mongodb://127.0.0.1:27017/db_irrigation').then(() => {
@@ -19,71 +24,60 @@ mongoose.connect('mongodb://127.0.0.1:27017/db_irrigation').then(() => {
   console.error('❌ Gagal terhubung ke MongoDB:', err);
 });
 
-
-// Endpoint POST untuk menerima data dari STM32
+// Endpoint POST Data
 app.post('/api/data', async (req, res) => {
-  console.log('📥 Data diterima:', req.body);
-
-  try {
-    // Membuat instance baru dari model SensorData dengan data dari body request
+  // ... (Isi logika POST kamu tetap sama, tidak berubah) ...
+    try {
     const newData = new SensorData({
       kelembaban: req.body.kelembaban,
       flow1: req.body.flow1,
       flow2: req.body.flow2,
-      // Mengonversi nilai 0/1 dari C++ menjadi true/false
-      pompa1_status: Boolean(req.body.pompa1_status),
+      pompa1_status: Boolean(req.body.pompa1_status), // Saran: Gunakan req.body.pompa1_status == 1
       pompa2_status: Boolean(req.body.pompa2_status)
     });
-
-    // Menyimpan data ke database
     const savedData = await newData.save();
-    
     console.log('Data berhasil disimpan:', savedData);
-
-    // Mengirim respons kembali ke perangkat bahwa data berhasil diterima dan disimpan
     res.status(201).json({ message: 'Data berhasil disimpan'});
-
   } catch (error) {
     console.error('Gagal menyimpan data:', error.message);
-    // Jika terjadi error, kirim respons error
     res.status(400).json({ message: 'Gagal menyimpan data', error: error.message });
   }
 });
 
-// Endpoint GET untuk mengambil semua data sensor
-// Endpoint GET dengan Filter Tanggal
+// Endpoint GET Data
 app.get('/sensor-data', async (req, res) => {
-  try {
+   // ... (Isi logika GET kamu tetap sama) ...
+   try {
     const { startDate, endDate } = req.query;
     let query = {};
-
-    // Jika ada parameter tanggal dari Frontend, kita filter query-nya
     if (startDate && endDate) {
-      // Set waktu dari awal hari (00:00) sampai akhir hari (23:59)
       const start = new Date(startDate);
       start.setHours(0, 0, 0, 0);
-
       const end = new Date(endDate);
       end.setHours(23, 59, 59, 999);
-
-      query.timestamp = {
-        $gte: start, // Greater Than or Equal (>=)
-        $lte: end    // Less Than or Equal (<=)
-      };
+      query.timestamp = { $gte: start, $lte: end };
     }
-
-    // Ambil data sesuai query, urutkan dari yang terbaru
     const allData = await SensorData.find(query).sort({ timestamp: -1 });
     res.json(allData);
-
   } catch (err) {
     res.status(500).json({ message: '❌ Gagal mengambil data', error: err.message });
   }
 });
 
-app.get('/', (req, res) => {
-  res.send('🎉 Server IoT berjalan! Kirim data POST ke /api/data.');
+// --- [HAPUS BAGIAN INI] ---
+// app.get('/', (req, res) => {
+//   res.send('Server IoT berjalan! Kirim data POST ke /api/data.');
+// });
+// Kenapa dihapus? Karena kalau tidak, saat buka browser yang muncul teks ini, bukan website React.
+
+
+// --- [BARU 2] Handle React Routing (Catch-All) ---
+// Letakkan ini PALING BAWAH sebelum app.listen.
+// Fungsinya: Apapun URL yang dibuka user (selain /api/...), kembalikan index.html React
+app.get('*', (req, res) => {
+  res.sendFile(path.join(__dirname, 'dist', 'index.html'));
 });
+
 
 // Menjalankan server
 app.listen(PORT, () => {
